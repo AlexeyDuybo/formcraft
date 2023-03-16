@@ -1,0 +1,40 @@
+{
+  "name": "formcraft",
+  "version": "0.1.0",
+  "description": "Form manager for Effector",
+  "main": "index.js",
+  "scripts": {
+    "prepare": "husky install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlexeyDuybo/formcraft.git"
+  },
+  "author": "Alexey Duybo",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AlexeyDuybo/formcraft/issues"
+  },
+  "homepage": "https://github.com/AlexeyDuybo/formcraft#readme",
+  "devDependencies": {
+    "@types/react": "^18.0.28",
+    "@typescript-eslint/eslint-plugin": "^5.55.0",
+    "@typescript-eslint/parser": "^5.55.0",
+    "effector": "^22.7.0",
+    "effector-react": "^22.5.1",
+    "eslint": "^8.36.0",
+    "eslint-config-prettier": "^8.7.0",
+    "eslint-plugin-react": "^7.32.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.0",
+    "prettier": "^2.8.4",
+    "react": "^18.2.0",
+    "typescript": "^5.0.2"
+  },
+  "dependencies": {
+    "@commitlint/cli": "^17.4.4",
+    "@commitlint/config-conventional": "^17.4.4",
+    "eslint-plugin-effector": "^0.10.3"
+  }
+}
