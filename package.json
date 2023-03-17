@@ -2,9 +2,11 @@
   "name": "formcraft",
   "version": "0.1.0",
   "description": "Form manager for Effector",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "prepublish": "tsc"
   },
   "repository": {
     "type": "git",
