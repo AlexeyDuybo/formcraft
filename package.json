@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "prepare": "husky install",
-    "prepublish": "tsc"
+    "prepublish": "tsc -project ./tsconfig.build.json "
   },
   "repository": {
     "type": "git",
@@ -19,6 +19,8 @@
   },
   "homepage": "https://github.com/AlexeyDuybo/formcraft#readme",
   "devDependencies": {
+    "@commitlint/cli": "^17.4.4",
+    "@commitlint/config-conventional": "^17.4.4",
     "@types/react": "^18.0.28",
     "@typescript-eslint/eslint-plugin": "^5.55.0",
     "@typescript-eslint/parser": "^5.55.0",
@@ -26,6 +28,7 @@
     "effector-react": "^22.5.1",
     "eslint": "^8.36.0",
     "eslint-config-prettier": "^8.7.0",
+    "eslint-plugin-effector": "^0.10.3",
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "husky": "^8.0.3",
@@ -34,9 +37,5 @@
     "react": "^18.2.0",
     "typescript": "^5.0.2"
   },
-  "dependencies": {
-    "@commitlint/cli": "^17.4.4",
-    "@commitlint/config-conventional": "^17.4.4",
-    "eslint-plugin-effector": "^0.10.3"
-  }
+  "dependencies": {}
 }
