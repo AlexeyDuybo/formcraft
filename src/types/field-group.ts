@@ -19,7 +19,7 @@ type GetOneOfError<
   Shape extends FieldShape,
   Keys extends keyof Shape = keyof Shape
 > = Keys extends keyof Shape
-  ? { key: Keys; value: GetUnitError<Shape[Keys]> }
+  ? { key: Keys; error: GetUnitError<Shape[Keys]> }
   : never;
 type GetGroupResults<
   Shape extends FieldShape,

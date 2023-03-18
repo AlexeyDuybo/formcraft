@@ -193,8 +193,8 @@ export const groupFields = (
       if (!isSingleKey) {
         return values;
       }
-      const [key, result] = Object.entries(values)[0]!;
-      return { key, result };
+      const [key, value] = Object.entries(values)[0]!;
+      return { key, value };
     },
     target: resolved,
   });
