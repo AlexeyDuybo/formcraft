@@ -326,14 +326,6 @@ interface FieldList<Value> {
 }
 ```
 
-### Lists
-
-**_$valueList, $isDirtyList, $isLoadingList, $isTouchedList, $isFocusedList, $errorList, $isDisabledList_** equivalent to the corresponding stores from the **_field_** but work with lists. all these stores together contain all information about **_fieldList_**. the data in them is consistent and is updated in a single batch.
-
-### Aggregated stores
-
-**_$isError, $isDirty, $isTouched, $isLoading, $isFocused_** simply indicate that in the corresponding list at least one element is equal to true
-
 **_fieldList.append_**
 
 adds a new field to the end of the list
@@ -345,6 +337,14 @@ adds a new field before the first element in the list
 **_fieldList.insert_**
 
 adds a new element at the specified index, all subsequent elements will be shifted by one position
+
+### Lists
+
+**_$valueList, $isDirtyList, $isLoadingList, $isTouchedList, $isFocusedList, $errorList, $isDisabledList_** equivalent to the corresponding stores from the **_field_** but work with lists. all these stores together contain all information about **_fieldList_**. the data in them is consistent and is updated in a single batch.
+
+### Aggregated stores
+
+**_$isError, $isDirty, $isTouched, $isLoading, $isFocused_** simply indicate that in the corresponding list at least one element is equal to true
 
 ### Stable id for list elements
 
