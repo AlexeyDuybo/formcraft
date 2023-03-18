@@ -15,10 +15,11 @@
 ## Philosophy
 
 Formcraft provides a set of abstractions for convenient work with forms with two concepts:
-**Atomicity**
-The library provides different building blocks that you can put together to create complex forms or use individually. This allows you to easily work with the entire form or just one specific part. For example, you can submit or reset the entire form or refer to just one block when displaying information in the user interface.
-**Clean and ordered declaration**
-Sometimes a form needs complex validation that rely on outside data and happen on specific occasions. To do this, a big monster configuration is often written at the beginning of the file, making it hard to read and confusing. Furthermore, the order of the declaration matters, which can be problematic if a validation depends on a store, which has to be defined beforehand. Formcraft solves this by separating the form's logic from its declaration, so the declaration block is more understandable and saves order.
+
+- **Atomicity**
+  The library provides different building blocks that you can put together to create complex forms or use individually. This allows you to easily work with the entire form or just one specific part. For example, you can submit or reset the entire form or refer to just one block when displaying information in the user interface.
+- **Clean and ordered declaration**
+  Sometimes a form needs complex validation that rely on outside data and happen on specific occasions. To do this, a big monster configuration is often written at the beginning of the file, making it hard to read and confusing. Furthermore, the order of the declaration matters, which can be problematic if a validation depends on a store, which has to be defined beforehand. Formcraft solves this by separating the form's logic from its declaration, so the declaration block is more understandable and saves order.
 
 ```ts
 // one line declarations
@@ -160,7 +161,7 @@ import { createField } from "formcraft";
 const field = createField<string | null>(null);
 ```
 
-### API
+### Field api
 
 ```ts
 interface Field<Value> {
@@ -189,27 +190,27 @@ interface Field<Value> {
 }
 ```
 
-### $isError
+**_$isError_**
 
 error state, sets via validator or **_initialErrorState_**
 
-### $isError
+**_$errorMessages_**
 
 error list, sets via validator
 
-### $isDirty
+**_$isDirty_**
 
 true if $value not equals initial value.
 
-### $isTouched
+**_$isTouched_**
 
 becomes true if setFocus(true) and then setFocus(false) were called
 
-### touched
+**_touched_**
 
 fires when $isTouched becomes true
 
-### examples
+### Field examples
 
 **_field as independent form_**
 
@@ -262,7 +263,9 @@ Similar to **_field_** but for work with a list of values
 **_Returns_**: `FieldList<T, WithId = false>`
 
 **_initialValue:_** value that will be set to the new field in the list by default
+
 **_initialErrorState:_** error state that will be given to the new list element
+
 **_withId:_** indicates that fieldList should work with **_stable ids_**
 
 ```ts
@@ -273,7 +276,7 @@ const fieldList2 = createFieldList("", {
 });
 ```
 
-### API
+### FieldList api
 
 ```ts
 interface FieldList<Value> {
@@ -331,15 +334,15 @@ interface FieldList<Value> {
 
 **_$isError, $isDirty, $isTouched, $isLoading, $isFocused_** simply indicate that in the corresponding list at least one element is equal to true
 
-### fieldList.append
+**_fieldList.append_**
 
 adds a new field to the end of the list
 
-### fiedList.prepend
+**_fiedList.prepend_**
 
 adds a new field before the first element in the list
 
-### fieldList.insert
+**_fieldList.insert_**
 
 adds a new element at the specified index, all subsequent elements will be shifted by one position
 
@@ -364,9 +367,13 @@ Validation rules in formcraft are described separately from the declaration and 
 
 **Params**: config
 **_config.field:_** `Field<any> | FIeldList<any, boolean> | ControlledFieldList<any, boolean>`
+
 **_config.validator:_** `(...params: ValidatorParams) => ValidatorResult`
+
 **_config.external?:_** `Store<any> | Record<string, Store<any>>`
+
 **_config.validateOne?:_** `ValidationStrategy = 'touch'`
+
 **_updateByExternal?:_** `boolean | 'afterFirstValidation' = 'afterFirstValidation'`
 
 **_Returns:_** `void`
@@ -418,7 +425,7 @@ attachValidator({
 - {
   value: T,
   index?: number,
-  id: string //** if withId = true**
+  id: string // **_ if withId = true_**
   }
 - **_config.external_** if passed
 
@@ -431,7 +438,7 @@ attachValidator({
 
 ### ValidationStrategy
 
-ValidationStrategy describes at what stages the validation will be performed. The strategy is specified in the validator config and can be either one or several. ** Submit strategy is applied in any case, regardless of the strategies passed in the config. This is necessary in order not to accidentally submit invalid data.**
+ValidationStrategy describes at what stages the validation will be performed. The strategy is specified in the validator config and can be either one or several. **_Submit strategy is applied in any case, regardless of the strategies passed in the config. This is necessary in order not to accidentally submit invalid data._**
 
 - **_init:_** for the **_field_**, validation will be performed at the time of the **_attachValidator_** call. for **_fieldList_** at the time of element creation using \***_append, prepend, insert_** or **_fill_** events
 - **_change:_** every time after calling **_setValue_**
@@ -460,7 +467,9 @@ Similar to a **_fieldList_** but does not contain events that can change the siz
 **_Returns_**: `ControlledFieldList<T, WithId = false>`
 
 **_initialValue:_** value that will be set to the new field in the list by default
+
 **_initialErrorState:_** error state that will be given to the new list element
+
 **_withId:_** indicates that fieldList should work with **_stable ids_**
 
 ```ts
@@ -471,7 +480,7 @@ const fieldList2 = createControlledFieldList("", {
 });
 ```
 
-###API
+### ControlledFIeldList api
 
 ```ts
 interface ControlledFieldList<Value> {
@@ -543,32 +552,30 @@ const TodoItem = () => (
 Now we have to work with the structure like **_{ title: string, diescription: string }[]_**.
 So in this case we can create **_fieldList_** for title and description and match their elements.
 
-```
-const titleList = createFieldList('');
-const descriptionList = createFieldList('');
+```ts
+const titleList = createFieldList("");
+const descriptionList = createFieldList("");
 
 const $todoList = combine(
-    titleList.$valueList,
-    descriptionList.$valueList,
-    (titleList, descriptionList) => titleList.map((title, index) => ({
-        title,
-        desription: descriptionList[index]
+  titleList.$valueList,
+  descriptionList.$valueList,
+  (titleList, descriptionList) =>
+    titleList.map((title, index) => ({
+      title,
+      desription: descriptionList[index],
     }))
-)
+);
 
 sample({
-    clock: createTodoItemButtonClicked,
-    target: [
-        titleList.append,
-        descriptionList.append
-    ]
+  clock: createTodoItemButtonClicked,
+  target: [titleList.append, descriptionList.append],
 });
 
 sample({
-    clock: saveButtonClicked,
-    source: $todoList,
-    target: saveTodosFx
-})
+  clock: saveButtonClicked,
+  source: $todoList,
+  target: saveTodosFx,
+});
 ```
 
 This will work, but managing lists this way is inconvenient.
@@ -597,7 +604,7 @@ const todoList = createFieldListManager({
 FieldListManager dont work with Fieldlist, but with ControlledFieldList, this is so that the user does not change the list with which the manager works and does not bring the system into an inconsistent state.
 The lists with which the manager works must either **_all have withId = true or all withId = false_**.
 
-### API
+### FieldListManager api
 
 consider api where template is:
 `{ title: ControlledFIeldList<any, false>, description:  ControlledFIeldList<any, false>}`
@@ -668,7 +675,8 @@ For example, **_fieldlistManager.reset_** will simply call reset event for all l
 
 ## FieldGroup
 
-###groupFields
+### groupFields
+
 **_Params_**
 
 - **_unitShape_**: `Record<string, FormUnit<any, any, any>>`
@@ -712,9 +720,10 @@ group.fill({ unvalidField: "foo", validField: "bar" }); // still can fill not ac
 unvalidField.$value.getState(); // foo
 ```
 
-### Api
+### FieldGroup api
 
 consider api where unit shape is: `{ title: Field<string>, description:  FIeld<string>}`
+
 **_common types_**:
 
 ```ts
