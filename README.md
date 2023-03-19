@@ -11,6 +11,10 @@
 - [FieldGroup](#fieldgroup)
 - [Hooks](#hooks)
 - [Examples](#examples)
+  - [Conditional form](#conditional-form)
+  - [Complex shape list](#complex-shape-list)
+  - [Server side validation](#server-side-validation)
+  - [Related field validation](#related-field-validation)
 
 ## Philosophy
 
@@ -912,3 +916,536 @@ const FieldList = () => {
 ```
 
 ## Examples
+
+### Conditional form
+
+**_[Live example](https://stackblitz.com/edit/react-ts-tqrwdc?file=model.ts)_**
+
+```ts
+import React, { FC, InputHTMLAttributes } from "react";
+import { createEffect, createEvent, createStore, sample } from "effector";
+import { useUnit } from "effector-react";
+import {
+  createField,
+  attachValidator,
+  groupFields,
+  useField,
+  Field,
+} from "formcraft";
+
+type RegistrationPayload = {
+  userName: string;
+  contactInfo: { email: string } | { phone: { code: number; number: string } };
+};
+
+export const userName = createField("");
+export const email = createField("");
+export const phoneCountryCode = createField("");
+export const phoneNumber = createField("");
+const phone = groupFields({
+  code: phoneCountryCode,
+  number: phoneNumber,
+});
+export const contactInfo = groupFields({ phone, email }, createStore("email"));
+const registrationForm = groupFields({ userName, contactInfo });
+
+export const registerByPhoneButtonClicked = createEvent();
+export const registerByEmailButtonClicked = createEvent();
+export const registerButtonClicked = createEvent();
+
+const registerFx = createEffect<RegistrationPayload, void>();
+
+export const $contactInfoType = contactInfo.$keys;
+
+attachValidator({
+  field: userName,
+  validator: (userName) =>
+    userName.length >= 5 || "Name is too short (minimum 5 characters)",
+});
+
+attachValidator({
+  field: email,
+  validator: (email) => /^\S+@\S+\.\S+$/.test(email) || "Email is not correct",
+});
+
+attachValidator({
+  field: phoneCountryCode,
+  validator: (code) => /^\d{1,4}$/.test(code),
+});
+
+attachValidator({
+  field: phoneNumber,
+  validator: (phone) => /^\d{5}/.test(phone),
+});
+
+sample({
+  clock: registerByEmailButtonClicked,
+  fn: () => "email" as const,
+  target: [$contactInfoType, phone.reset] as const,
+});
+
+sample({
+  clock: registerByPhoneButtonClicked,
+  fn: () => "phone" as const,
+  target: [$contactInfoType, email.reset] as const,
+});
+
+sample({
+  clock: registerButtonClicked,
+  target: registrationForm.submit,
+});
+
+sample({
+  clock: registrationForm.resolved,
+  fn: ({ userName, contactInfo }): RegistrationPayload => ({
+    userName,
+    contactInfo:
+      contactInfo.key === "email"
+        ? { email: contactInfo.value }
+        : {
+            phone: {
+              code: Number(contactInfo.value.code),
+              number: contactInfo.value.number,
+            },
+          },
+  }),
+  target: registerFx,
+});
+
+sample({
+  clock: registerFx.doneData,
+  target: registrationForm.reset,
+});
+
+registerFx.use((d) => {
+  alert(JSON.stringify(d, null, 2));
+});
+
+const Input: FC<{ field: Field<string> } & InputHTMLAttributes<{}>> = ({
+  field,
+  ...inputProps
+}) => {
+  const { value, onBlur, onChange, onFocus, isError, errorMessages } =
+    useField(field);
+  return (
+    <div>
+      <input
+        style={isError ? { border: "1px solid red" } : {}}
+        value={value}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        onChange={({ target: { value } }) => onChange(value)}
+        {...inputProps}
+      />
+      {isError && errorMessages.length ? errorMessages.join(", ") : ""}
+    </div>
+  );
+};
+
+export const RegistrationForm: FC = () => {
+  const [contactInfoType, onLoginByPhone, onLoginByEmail, onRegister] = useUnit(
+    [
+      $contactInfoType,
+      registerByPhoneButtonClicked,
+      registerByEmailButtonClicked,
+      registerButtonClicked,
+    ]
+  );
+
+  return (
+    <div>
+      <h1>Registration form</h1>
+      <button onClick={onLoginByPhone}>register by phone</button>
+      <button onClick={onLoginByEmail}>register by email</button>
+      <div>
+        <Input field={userName} placeholder="user name" />
+        {contactInfoType === "email" ? (
+          <Input field={email} placeholder="email" />
+        ) : (
+          <div>
+            <Input field={phoneCountryCode} placeholder="code" />
+            <Input field={phoneNumber} placeholder="number" />
+          </div>
+        )}
+      </div>
+      <button onClick={onRegister}>register</button>
+    </div>
+  );
+};
+```
+
+### Complex shape list
+
+**_[Live example](https://stackblitz.com/edit/react-ts-w4hlqg?file=model.ts)_**
+
+```ts
+import React, { FC, InputHTMLAttributes } from "react";
+import { createEffect, createEvent, createStore, sample } from "effector";
+import {
+  ControlledFieldList,
+  createControlledFieldList,
+  createFieldListManager,
+  attachValidator,
+  useFieldListKeys,
+  useFieldListElement,
+} from "formcraft";
+
+type Todo = {
+  title: string;
+  description: string;
+  isCompleted: boolean;
+};
+
+export const titleList = createControlledFieldList("");
+export const descriptionList = createControlledFieldList("");
+export const isCompletedList = createControlledFieldList(false);
+export const todoList = createFieldListManager({
+  title: titleList,
+  description: descriptionList,
+  isCompleted: isCompletedList,
+});
+
+export const saveButtonClicked = createEvent();
+export const addTodoButtonClicked = createEvent();
+export const removeTodoButtonClicked = createEvent<{ index: number }>();
+const todoPageOpened = createEvent();
+
+const loadTodosFx = createEffect<void, Todo[]>();
+const saveTodosFx = createEffect<Todo[], void>();
+
+attachValidator({
+  field: titleList,
+  validator: ({ value: title }) => title.length > 0 || "title cannot be empty",
+});
+
+sample({
+  clock: todoPageOpened,
+  target: loadTodosFx,
+});
+
+sample({
+  clock: addTodoButtonClicked,
+  target: todoList.append,
+});
+
+sample({
+  clock: removeTodoButtonClicked,
+  target: todoList.remove,
+});
+
+sample({
+  clock: saveButtonClicked,
+  target: todoList.submit,
+});
+
+sample({
+  clock: todoList.resolved,
+  target: saveTodosFx,
+});
+
+sample({
+  clock: loadTodosFx.doneData,
+  target: todoList.fill,
+});
+
+loadTodosFx.use(async () => {
+  const todos = localStorage.getItem("todos");
+  if (todos === null) {
+    return [
+      { title: "open example", description: "", isCompleted: true },
+      { title: "play with it", description: "", isCompleted: false },
+      { title: "share feedback", description: "please", isCompleted: false },
+    ];
+  }
+  try {
+    return JSON.parse(todos);
+  } catch {
+    return [];
+  }
+});
+
+saveTodosFx.use(async (todos) => {
+  localStorage.setItem("todos", JSON.stringify(todos));
+});
+
+todoPageOpened();
+
+const Input: FC<
+  {
+    fieldList: ControlledFieldList<string, boolean>;
+    index: number;
+  } & InputHTMLAttributes<{}>
+> = ({ fieldList, index, ...inputProps }) => {
+  const { value, onBlur, onChange, onFocus, isError, errorMessages } =
+    useFieldListElement(fieldList, { index });
+  return (
+    <div>
+      <input
+        style={isError ? { border: "1px solid red" } : {}}
+        value={value}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        onChange={({ target: { value } }) => onChange(value)}
+        {...inputProps}
+      />
+      {isError && errorMessages?.length ? errorMessages.join(", ") : ""}
+    </div>
+  );
+};
+
+const Checkbox: FC<
+  {
+    fieldList: ControlledFieldList<boolean, boolean>;
+    index: number;
+  } & InputHTMLAttributes<{}>
+> = ({ fieldList, index, ...inputProps }) => {
+  const { value, onBlur, onChange, onFocus, isError, errorMessages } =
+    useFieldListElement(fieldList, { index });
+  return (
+    <div>
+      <input
+        {...inputProps}
+        style={isError ? { border: "1px solid red" } : {}}
+        checked={value}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        type="checkbox"
+        onChange={() => onChange(!value)}
+      />
+      {inputProps.placeholder}
+    </div>
+  );
+};
+
+const TodoItem: FC<{ index: number }> = ({ index }) => {
+  return (
+    <div style={{ marginBottom: 15 }}>
+      <Input fieldList={titleList} index={index} placeholder={"title"} />
+      <Input
+        fieldList={descriptionList}
+        index={index}
+        placeholder={"description"}
+      />
+      <Checkbox
+        fieldList={isCompletedList}
+        index={index}
+        placeholder={"is completed"}
+      />
+      <button onClick={() => removeTodoButtonClicked({ index })}>delete</button>
+    </div>
+  );
+};
+
+export const TodoList: FC = () => {
+  const keys = useFieldListKeys(todoList);
+
+  return (
+    <div>
+      <h1>Todo list</h1>
+      <button onClick={() => addTodoButtonClicked()}>new todo + </button>
+      <ul>
+        {keys.map((key, index) => (
+          <TodoItem key={key} index={index} />
+        ))}
+      </ul>
+      <button onClick={() => saveButtonClicked()}>save</button>
+    </div>
+  );
+};
+```
+
+### Server side validation
+
+**_[Live example](https://stackblitz.com/edit/react-ts-shg9e3?file=model.ts)_**
+
+```ts
+import React, { FC } from "react";
+import { useField } from "formcraft";
+import { createEffect, createEvent, createStore, sample } from "effector";
+import { debounce } from "patronum/debounce";
+import { createField, attachValidator } from "formcraft";
+
+export const email = createField("");
+
+const checkEmail = createEvent<string>();
+
+const checkEmailFx = createEffect<string, string[]>();
+
+const $emailErrors = createStore<string[]>([]);
+
+attachValidator({
+  field: email,
+  external: $emailErrors,
+  validator: (email, serverErrors) => {
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      return "Email is not correct";
+    }
+    return !serverErrors.length || serverErrors;
+  },
+  validateOn: "change",
+});
+
+sample({
+  clock: email.$value,
+  target: $emailErrors.reinit!,
+});
+
+sample({
+  clock: checkEmail,
+  fn: () => true,
+  target: email.setLoading,
+});
+
+sample({
+  clock: checkEmailFx.finally,
+  fn: () => false,
+  target: email.setLoading,
+});
+
+sample({
+  clock: email.$value,
+  source: email.$isError,
+  filter: (isError) => !isError,
+  fn: (_, value) => value,
+  target: checkEmail,
+});
+
+sample({
+  clock: checkEmailFx.doneData,
+  target: $emailErrors,
+});
+
+debounce({
+  source: checkEmail,
+  timeout: 500,
+  target: checkEmailFx,
+});
+
+checkEmailFx.use(
+  async (val) =>
+    new Promise((res, rej) => {
+      console.log("check", val);
+      setTimeout(() => {
+        res(Math.random() > 0.5 ? [] : ["email not found"]);
+      }, 500);
+    })
+);
+
+export const Email: FC = () => {
+  const {
+    value,
+    onBlur,
+    onChange,
+    onFocus,
+    isError,
+    isLoading,
+    errorMessages,
+  } = useField(email);
+  return (
+    <div>
+      <input
+        style={isError ? { border: "1px solid red" } : {}}
+        placeholder={"email"}
+        value={value}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        onChange={({ target: { value } }) => onChange(value)}
+      />
+      {isError && errorMessages.length ? errorMessages.join(", ") : ""}
+      {isLoading && <div>loading...</div>}
+    </div>
+  );
+};
+```
+
+### Related field validation
+
+**_[Live example](https://stackblitz.com/edit/react-ts-lshspc?file=model.ts)_**
+
+```ts
+import React, { FC, InputHTMLAttributes } from "react";
+import { createEffect, createEvent, sample } from "effector";
+import {
+  createField,
+  groupFields,
+  attachValidator,
+  useField,
+  Field,
+} from "formcraft";
+
+export const password = createField("");
+export const repeatedPassword = createField("");
+const passwordForm = groupFields({ password, repeatedPassword });
+
+export const savePasswordButtonClicked = createEvent();
+
+const savePasswordFx = createEffect<string, void>();
+
+attachValidator({
+  field: password,
+  validator: (password) =>
+    password.length > 5 || "the password has to be longer than 5 characters",
+  validateOn: "change",
+});
+
+attachValidator({
+  field: repeatedPassword,
+  external: password.$value,
+  validator: (repeatedPassword, password) =>
+    repeatedPassword === password || "passwords are not equal",
+  validateOn: "change",
+});
+
+sample({
+  clock: savePasswordButtonClicked,
+  target: password.submit,
+});
+
+sample({
+  clock: password.resolved,
+  target: savePasswordFx,
+});
+
+sample({
+  clock: savePasswordFx.done,
+  target: passwordForm.reset,
+});
+
+savePasswordFx.use((pw) => {
+  alert(pw);
+});
+
+const Input: FC<{ field: Field<string> } & InputHTMLAttributes<{}>> = ({
+  field,
+  ...inputProps
+}) => {
+  const { value, onBlur, onChange, onFocus, isError, errorMessages } =
+    useField(field);
+  return (
+    <div>
+      <input
+        style={isError ? { border: "1px solid red" } : {}}
+        value={value}
+        onBlur={onBlur}
+        onFocus={onFocus}
+        onChange={({ target: { value } }) => onChange(value)}
+        {...inputProps}
+      />
+      {isError && errorMessages.length ? errorMessages.join(", ") : ""}
+    </div>
+  );
+};
+
+export const PasswordForm: FC = () => {
+  return (
+    <div>
+      <h1>Password creation form</h1>
+      <div>
+        <Input field={password} placeholder="password" />
+        <Input field={repeatedPassword} placeholder="repeat password" />
+      </div>
+      <button onClick={() => savePasswordButtonClicked()}>save password</button>
+    </div>
+  );
+};
+```
