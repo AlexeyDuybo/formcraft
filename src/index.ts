@@ -1,4 +1,15 @@
-import type * as types from "./types";
+import type {
+  createControlledFieldList as createControlledFieldListType,
+  attachValidator as attachValidatorType,
+  groupFields as groupFieldsType,
+  createField as createFieldType,
+  createFieldList as createFieldListType,
+  createFieldListManager as createFieldListManagerType,
+  useField as useFieldType,
+  useFieldListElement as useFieldListElementType,
+  useFieldListKeys as useFieldListKeysType,
+  useFormUnit as useFormUnitType,
+} from "./types";
 import { groupFields as _groupFields } from "./field-group";
 import { createField as _createField } from "./field";
 import { createFieldList as _createFieldList } from "./field-list";
@@ -7,23 +18,23 @@ import { createFieldListManager as _createFieldListManager } from "./field-list-
 import { attachValidator as _attachValidator } from "./validator";
 import * as hooks from "./hooks";
 
-export const groupFields = _groupFields as unknown as typeof types.groupFields;
-export const createField = _createField as unknown as typeof types.createField;
+export const groupFields = _groupFields as unknown as typeof groupFieldsType;
+export const createField = _createField as unknown as typeof createFieldType;
 export const createFieldList =
-  _createFieldList as unknown as typeof types.createFieldList;
+  _createFieldList as unknown as typeof createFieldListType;
 export const createControlledFieldList =
-  _createControlledFieldList as unknown as typeof types.createControlledFieldList;
+  _createControlledFieldList as unknown as typeof createControlledFieldListType;
 export const createFieldListManager =
-  _createFieldListManager as unknown as typeof types.createFieldListManager;
+  _createFieldListManager as unknown as typeof createFieldListManagerType;
 export const attachValidator =
-  _attachValidator as unknown as typeof types.attachValidator;
-export const useField = hooks.useField as unknown as typeof types.useField;
+  _attachValidator as unknown as typeof attachValidatorType;
+export const useField = hooks.useField as unknown as typeof useFieldType;
 export const useFieldListElement =
-  hooks.useFieldListElement as unknown as typeof types.useFieldListElement;
+  hooks.useFieldListElement as unknown as typeof useFieldListElementType;
 export const useFieldListKeys =
-  hooks.useFieldListKeys as unknown as typeof types.useFieldListKeys;
+  hooks.useFieldListKeys as unknown as typeof useFieldListKeysType;
 export const useFormUnit =
-  hooks.useFormUnit as unknown as typeof types.useFormUnit;
+  hooks.useFormUnit as unknown as typeof useFormUnitType;
 export type {
   Field,
   FieldGroup,
