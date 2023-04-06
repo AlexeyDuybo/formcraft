@@ -6,7 +6,9 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "prepare": "husky install",
-    "prepublish": "tsc -project ./tsconfig.build.json "
+    "prepublish": "tsc -project ./tsconfig.build.json",
+    "test": "vitest --run",
+    "test:watch": "vitest --watch"
   },
   "repository": {
     "type": "git",
@@ -19,8 +21,10 @@
   },
   "homepage": "https://github.com/AlexeyDuybo/formcraft#readme",
   "devDependencies": {
+    "@babel/core": "^7.21.3",
     "@commitlint/cli": "^17.4.4",
     "@commitlint/config-conventional": "^17.4.4",
+    "@rollup/plugin-babel": "^6.0.3",
     "@types/react": "^18.0.28",
     "@typescript-eslint/eslint-plugin": "^5.55.0",
     "@typescript-eslint/parser": "^5.55.0",
@@ -35,7 +39,8 @@
     "lint-staged": "^13.2.0",
     "prettier": "^2.8.4",
     "react": "^18.2.0",
-    "typescript": "^5.0.2"
+    "typescript": "^5.0.2",
+    "vitest": "^0.29.7"
   },
   "dependencies": {},
   "peerDependencies": {
