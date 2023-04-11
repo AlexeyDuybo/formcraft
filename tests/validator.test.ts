@@ -1,5 +1,12 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { allSettled, fork } from "effector";
+import { describe, it, expect, beforeEach, vitest } from "vitest";
+import {
+  Store,
+  allSettled,
+  combine,
+  fork,
+  sample,
+  createEffect,
+} from "effector";
 import { spyEvent } from "./utils";
 import { createField, attachValidator } from "../src";
 
@@ -517,6 +524,661 @@ describe("validator", () => {
           await allSettled(field.reset, { scope });
 
           expect(scope.getState(field.$isError)).toBe(false);
+        });
+      });
+    });
+    describe("consistent store updates", () => {
+      const initialStoreValues = {
+        errorMessages: [],
+        isDirty: false,
+        isDisabled: false,
+        isError: false,
+        isFocused: false,
+        isLoading: false,
+        isReady: true,
+        isTouched: false,
+        value: "",
+      };
+      let field = createField("");
+      let fn = vitest.fn((param: any) => param);
+      let stores: {
+        errorMessages: Store<string[]>;
+        isDirty: Store<boolean>;
+        isDisabled: Store<boolean>;
+        isError: Store<boolean>;
+        isFocused: Store<boolean>;
+        isLoading: Store<boolean>;
+        isReady: Store<boolean>;
+        isTouched: Store<boolean>;
+        value: Store<string>;
+      } = {} as any;
+      const changedStores = {
+        ...initialStoreValues,
+        isError: true,
+        errorMessages: ["foo", "bar"],
+        isReady: false,
+      };
+      beforeEach(() => {
+        fn = vitest.fn((param: any) => param);
+        field = createField("");
+        stores = {
+          errorMessages: field.$errorMessages,
+          isDirty: field.$isDirty,
+          isDisabled: field.$isDisabled,
+          isError: field.$isError,
+          isFocused: field.$isFocused,
+          isLoading: field.$isLoading,
+          isReady: field.$isReady,
+          isTouched: field.$isTouched,
+          value: field.$value,
+        };
+      });
+      describe("init", () => {
+        it("combine", async () => {
+          combine(stores, fn);
+
+          attachValidator({
+            field,
+            validateOn: "init",
+            validator: () => ["foo", "bar"],
+          });
+
+          expect(fn).toHaveBeenCalledTimes(2);
+          expect(fn).toHaveBeenNthCalledWith(1, initialStoreValues);
+          expect(fn).toHaveBeenNthCalledWith(2, changedStores);
+        });
+        it("sample", async () => {
+          /* eslint-disable-next-line */
+          sample({
+            clock: Object.values(stores),
+            source: stores,
+            fn: (source) => fn(source),
+          });
+
+          attachValidator({
+            field,
+            validateOn: "init",
+            validator: () => ["foo", "bar"],
+          });
+
+          expect(fn).toHaveBeenCalledTimes(1);
+          expect(fn).toHaveBeenNthCalledWith(1, changedStores);
+        });
+      });
+      describe("setValue", () => {
+        describe("change", () => {
+          const changedStoresWithUpdatedValue = {
+            ...changedStores,
+            isDirty: true,
+            value: "foo",
+          };
+          it("combine", async () => {
+            combine(stores, fn);
+
+            attachValidator({
+              field,
+              validateOn: "change",
+              validator: () => ["foo", "bar"],
+            });
+
+            await allSettled(field.setValue, { scope, params: "foo" });
+
+            expect(fn).toHaveBeenCalledTimes(3);
+            expect(fn).toHaveBeenNthCalledWith(1, initialStoreValues);
+            expect(fn).toHaveBeenNthCalledWith(
+              2,
+              changedStoresWithUpdatedValue
+            );
+            expect(fn).toHaveBeenNthCalledWith(
+              3,
+              changedStoresWithUpdatedValue
+            );
+          });
+          it("sample", async () => {
+            /* eslint-disable-next-line */
+            sample({
+              clock: Object.values(stores),
+              source: stores,
+              fn: (source) => fn(source),
+            });
+
+            attachValidator({
+              field,
+              validateOn: "change",
+              validator: () => ["foo", "bar"],
+            });
+
+            await allSettled(field.setValue, { scope, params: "foo" });
+
+            expect(fn).toHaveBeenCalledTimes(1);
+            expect(fn).toHaveBeenNthCalledWith(
+              1,
+              changedStoresWithUpdatedValue
+            );
+          });
+        });
+        describe("touch", () => {
+          const changedStoresWithUpdatedValue = {
+            ...changedStores,
+            isDirty: true,
+            value: "foo",
+            isTouched: true,
+            isFocused: true,
+          };
+          it("combine", async () => {
+            let i = 0;
+            attachValidator({
+              field,
+              validateOn: "touch",
+              validator: () => i++ === 0 || ["foo", "bar"],
+            });
+            await allSettled(field.setFocus, { scope, params: true });
+            await allSettled(field.setFocus, { scope, params: false });
+            await allSettled(field.setFocus, { scope, params: true });
+            combine(stores, fn);
+
+            await allSettled(field.setValue, { scope, params: "foo" });
+
+            expect(fn).toHaveBeenCalledTimes(3);
+            expect(fn).toHaveBeenNthCalledWith(1, initialStoreValues);
+            expect(fn).toHaveBeenNthCalledWith(
+              2,
+              changedStoresWithUpdatedValue
+            );
+            expect(fn).toHaveBeenNthCalledWith(
+              3,
+              changedStoresWithUpdatedValue
+            );
+          });
+          it("sample", async () => {
+            let i = 0;
+            attachValidator({
+              field,
+              validateOn: "touch",
+              validator: () => i++ === 0 || ["foo", "bar"],
+            });
+            await allSettled(field.setFocus, { scope, params: true });
+            await allSettled(field.setFocus, { scope, params: false });
+            await allSettled(field.setFocus, { scope, params: true });
+            /* eslint-disable-next-line */
+            sample({
+              clock: Object.values(stores),
+              source: stores,
+              fn: (source) => fn(source),
+            });
+
+            await allSettled(field.setValue, { scope, params: "foo" });
+
+            expect(fn).toHaveBeenCalledTimes(1);
+            expect(fn).toHaveBeenNthCalledWith(
+              1,
+              changedStoresWithUpdatedValue
+            );
+          });
+        });
+      });
+      describe("fill", () => {
+        const initialStores = changedStores;
+        const changedStoresWithUpdatedValue = {
+          ...changedStores,
+          isDirty: true,
+          value: "foo",
+        };
+        it("combine", async () => {
+          attachValidator({
+            field,
+            validateOn: "init",
+            validator: () => ["foo", "bar"],
+          });
+          combine(stores, fn);
+
+          await allSettled(field.fill, { scope, params: "foo" });
+
+          expect(fn).toHaveBeenCalledTimes(3);
+          expect(fn).toHaveBeenNthCalledWith(1, initialStores);
+          expect(fn).toHaveBeenNthCalledWith(2, changedStoresWithUpdatedValue);
+          expect(fn).toHaveBeenNthCalledWith(2, changedStoresWithUpdatedValue);
+        });
+        it("sample", async () => {
+          attachValidator({
+            field,
+            validateOn: "init",
+            validator: () => ["foo", "bar"],
+          });
+          /* eslint-disable-next-line */
+          sample({
+            clock: Object.values(stores),
+            source: stores,
+            fn: (source) => fn(source),
+          });
+
+          await allSettled(field.fill, { scope, params: "foo" });
+
+          expect(fn).toHaveBeenCalledTimes(1);
+          expect(fn).toHaveBeenNthCalledWith(1, changedStoresWithUpdatedValue);
+        });
+      });
+      describe("reset", () => {
+        beforeEach(() => {
+          scope = fork({
+            values: [
+              [field.$errorMessages, ["foo", "bar"]],
+              [field.$isDirty, true],
+              [field.$isDisabled, true],
+              [field.$isError, true],
+              [field.$isFocused, true],
+              [field.$isLoading, true],
+              [field.$isTouched, true],
+              [field.$value, "foo"],
+            ],
+          });
+        });
+        describe("init", () => {
+          it("combine", async () => {
+            /* eslint-disable-next-line */
+            const combineFx = createEffect(async () => {
+              combine(stores, fn);
+            });
+            attachValidator({
+              field,
+              validator: () => ["foo", "bar"],
+              validateOn: "init",
+            });
+            await allSettled(combineFx, { scope });
+
+            await allSettled(field.reset, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(3);
+            expect(fn).toHaveBeenNthCalledWith(1, {
+              errorMessages: ["foo", "bar"],
+              isDirty: true,
+              isDisabled: true,
+              isError: true,
+              isFocused: true,
+              isLoading: true,
+              isTouched: true,
+              value: "foo",
+              isReady: false,
+            });
+            expect(fn).toHaveBeenNthCalledWith(2, changedStores);
+            expect(fn).toHaveBeenNthCalledWith(3, changedStores);
+          });
+          it("sample", async () => {
+            attachValidator({
+              field,
+              validator: () => ["foo", "bar"],
+              validateOn: "init",
+            });
+            /* eslint-disable-next-line */
+            sample({
+              clock: Object.values(stores),
+              source: stores,
+              fn: (source) => fn(source),
+            });
+
+            await allSettled(field.reset, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(1);
+            expect(fn).toHaveBeenNthCalledWith(1, changedStores);
+          });
+        });
+        describe("change", () => {
+          it("combine", async () => {
+            /* eslint-disable-next-line */
+            const combineFx = createEffect(async () => {
+              combine(stores, fn);
+            });
+            attachValidator({
+              field,
+              validator: () => ["foo", "bar"],
+              validateOn: "change",
+            });
+            await allSettled(combineFx, { scope });
+
+            await allSettled(field.reset, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(3);
+            expect(fn).toHaveBeenNthCalledWith(1, {
+              errorMessages: ["foo", "bar"],
+              isDirty: true,
+              isDisabled: true,
+              isError: true,
+              isFocused: true,
+              isLoading: true,
+              isTouched: true,
+              value: "foo",
+              isReady: false,
+            });
+            expect(fn).toHaveBeenNthCalledWith(2, initialStoreValues);
+            expect(fn).toHaveBeenNthCalledWith(3, initialStoreValues);
+          });
+          it("sample", async () => {
+            attachValidator({
+              field,
+              validator: () => ["foo", "bar"],
+              validateOn: "change",
+            });
+            /* eslint-disable-next-line */
+            sample({
+              clock: Object.values(stores),
+              source: stores,
+              fn: (source) => fn(source),
+            });
+
+            await allSettled(field.reset, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(1);
+            expect(fn).toHaveBeenNthCalledWith(1, initialStoreValues);
+          });
+        });
+        describe("touch", () => {
+          it("combine", async () => {
+            /* eslint-disable-next-line */
+            const combineFx = createEffect(async () => {
+              combine(stores, fn);
+            });
+            attachValidator({
+              field,
+              validator: () => ["foo", "bar"],
+              validateOn: "touch",
+            });
+            await allSettled(combineFx, { scope });
+
+            await allSettled(field.reset, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(3);
+            expect(fn).toHaveBeenNthCalledWith(1, {
+              errorMessages: ["foo", "bar"],
+              isDirty: true,
+              isDisabled: true,
+              isError: true,
+              isFocused: true,
+              isLoading: true,
+              isTouched: true,
+              value: "foo",
+              isReady: false,
+            });
+            expect(fn).toHaveBeenNthCalledWith(2, initialStoreValues);
+            expect(fn).toHaveBeenNthCalledWith(3, initialStoreValues);
+          });
+          it("sample", async () => {
+            attachValidator({
+              field,
+              validator: () => ["foo", "bar"],
+              validateOn: "touch",
+            });
+            /* eslint-disable-next-line */
+            sample({
+              clock: Object.values(stores),
+              source: stores,
+              fn: (source) => fn(source),
+            });
+
+            await allSettled(field.reset, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(1);
+            expect(fn).toHaveBeenNthCalledWith(1, initialStoreValues);
+          });
+        });
+        describe("submit", () => {
+          it("combine", async () => {
+            /* eslint-disable-next-line */
+            const combineFx = createEffect(async () => {
+              combine(stores, fn);
+            });
+            attachValidator({
+              field,
+              validator: () => ["foo", "bar"],
+              validateOn: "submit",
+            });
+            await allSettled(combineFx, { scope });
+
+            await allSettled(field.reset, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(3);
+            expect(fn).toHaveBeenNthCalledWith(1, {
+              errorMessages: ["foo", "bar"],
+              isDirty: true,
+              isDisabled: true,
+              isError: true,
+              isFocused: true,
+              isLoading: true,
+              isTouched: true,
+              value: "foo",
+              isReady: false,
+            });
+            expect(fn).toHaveBeenNthCalledWith(2, initialStoreValues);
+            expect(fn).toHaveBeenNthCalledWith(3, initialStoreValues);
+          });
+          it("sample", async () => {
+            attachValidator({
+              field,
+              validator: () => ["foo", "bar"],
+              validateOn: "submit",
+            });
+            /* eslint-disable-next-line */
+            sample({
+              clock: Object.values(stores),
+              source: stores,
+              fn: (source) => fn(source),
+            });
+
+            await allSettled(field.reset, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(1);
+            expect(fn).toHaveBeenNthCalledWith(1, initialStoreValues);
+          });
+        });
+      });
+      describe.skip("setFocus", () => {
+        it("combine", async () => {
+          combine(stores, fn);
+          attachValidator({
+            field,
+            validateOn: "touch",
+            validator: () => ["foo", "bar"],
+          });
+
+          await allSettled(field.setFocus, { scope, params: true });
+          await allSettled(field.setFocus, { scope, params: false });
+          await allSettled(field.setFocus, { scope, params: true });
+
+          expect(fn).toHaveBeenCalledTimes(5);
+          expect(fn).toHaveBeenNthCalledWith(1, initialStoreValues);
+          expect(fn).toHaveBeenNthCalledWith(2, {
+            ...initialStoreValues,
+            isFocused: true,
+          });
+          expect(fn).toHaveBeenNthCalledWith(3, {
+            ...initialStoreValues,
+            isFocused: true,
+          });
+          expect(fn).toHaveBeenNthCalledWith(4, {
+            ...changedStores,
+            isTouched: true,
+          });
+          expect(fn).toHaveBeenNthCalledWith(5, {
+            ...changedStores,
+            isTouched: true,
+            isFocused: true,
+          });
+        });
+        it("sample", async () => {
+          /* eslint-disable-next-line */
+          sample({
+            clock: Object.values(stores),
+            source: stores,
+            fn: (source) => fn(source),
+          });
+          attachValidator({
+            field,
+            validateOn: "touch",
+            validator: () => ["foo", "bar"],
+          });
+
+          await allSettled(field.setFocus, { scope, params: true });
+          await allSettled(field.setFocus, { scope, params: false });
+          await allSettled(field.setFocus, { scope, params: true });
+
+          expect(fn).toHaveBeenCalledTimes(3);
+          expect(fn).toHaveBeenNthCalledWith(1, {
+            ...initialStoreValues,
+            isFocused: true,
+          });
+          expect(fn).toHaveBeenNthCalledWith(2, {
+            ...changedStores,
+            isTouched: true,
+          });
+          expect(fn).toHaveBeenNthCalledWith(3, {
+            ...changedStores,
+            isTouched: true,
+            isFocused: true,
+          });
+        });
+      });
+      describe("submit", () => {
+        describe("init", () => {
+          it("combine", async () => {
+            let i = 0;
+            attachValidator({
+              field,
+              validateOn: "init",
+              validator: () => i++ === 0 || ["foo", "bar"],
+            });
+            combine(stores, fn);
+
+            await allSettled(field.submit, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(3);
+            expect(fn).toHaveBeenNthCalledWith(1, initialStoreValues);
+            expect(fn).toHaveBeenNthCalledWith(2, changedStores);
+            expect(fn).toHaveBeenNthCalledWith(3, changedStores);
+          });
+          it("sample", async () => {
+            let i = 0;
+            /* eslint-disable-next-line */
+            sample({
+              clock: Object.values(stores),
+              source: stores,
+              fn: (source) => fn(source),
+            });
+            attachValidator({
+              field,
+              validateOn: "init",
+              validator: () => i++ === 0 || ["foo", "bar"],
+            });
+
+            await allSettled(field.submit, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(2);
+            expect(fn).toHaveBeenNthCalledWith(1, initialStoreValues);
+            expect(fn).toHaveBeenNthCalledWith(2, changedStores);
+          });
+        });
+        describe("change", () => {
+          it("combine", async () => {
+            attachValidator({
+              field,
+              validateOn: "change",
+              validator: () => ["foo", "bar"],
+            });
+            combine(stores, fn);
+
+            await allSettled(field.submit, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(3);
+            expect(fn).toHaveBeenNthCalledWith(1, initialStoreValues);
+            expect(fn).toHaveBeenNthCalledWith(2, changedStores);
+            expect(fn).toHaveBeenNthCalledWith(3, changedStores);
+          });
+          it("sample", async () => {
+            /* eslint-disable-next-line */
+            sample({
+              clock: Object.values(stores),
+              source: stores,
+              fn: (source) => fn(source),
+            });
+            attachValidator({
+              field,
+              validateOn: "change",
+              validator: () => ["foo", "bar"],
+            });
+
+            await allSettled(field.submit, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(1);
+            expect(fn).toHaveBeenNthCalledWith(1, changedStores);
+          });
+        });
+        describe("touch", () => {
+          it("combine", async () => {
+            attachValidator({
+              field,
+              validateOn: "touch",
+              validator: () => ["foo", "bar"],
+            });
+            combine(stores, fn);
+
+            await allSettled(field.submit, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(3);
+            expect(fn).toHaveBeenNthCalledWith(1, initialStoreValues);
+            expect(fn).toHaveBeenNthCalledWith(2, changedStores);
+            expect(fn).toHaveBeenNthCalledWith(3, changedStores);
+          });
+          it("sample", async () => {
+            /* eslint-disable-next-line */
+            sample({
+              clock: Object.values(stores),
+              source: stores,
+              fn: (source) => fn(source),
+            });
+            attachValidator({
+              field,
+              validateOn: "touch",
+              validator: () => ["foo", "bar"],
+            });
+
+            await allSettled(field.submit, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(1);
+            expect(fn).toHaveBeenNthCalledWith(1, changedStores);
+          });
+        });
+        describe("submit", () => {
+          it("combine", async () => {
+            attachValidator({
+              field,
+              validateOn: "submit",
+              validator: () => ["foo", "bar"],
+            });
+            combine(stores, fn);
+
+            await allSettled(field.submit, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(3);
+            expect(fn).toHaveBeenNthCalledWith(1, initialStoreValues);
+            expect(fn).toHaveBeenNthCalledWith(2, changedStores);
+            expect(fn).toHaveBeenNthCalledWith(3, changedStores);
+          });
+          it("sample", async () => {
+            /* eslint-disable-next-line */
+            sample({
+              clock: Object.values(stores),
+              source: stores,
+              fn: (source) => fn(source),
+            });
+            attachValidator({
+              field,
+              validateOn: "submit",
+              validator: () => ["foo", "bar"],
+            });
+
+            await allSettled(field.submit, { scope });
+
+            expect(fn).toHaveBeenCalledTimes(1);
+            expect(fn).toHaveBeenNthCalledWith(1, changedStores);
+          });
         });
       });
     });
