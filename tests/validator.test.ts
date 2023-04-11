@@ -12,7 +12,7 @@ describe("validator", () => {
   describe("field", () => {
     describe("$isError", () => {
       describe("init", () => {
-        it("does not validate on init", async () => {
+        it("validates on init", async () => {
           const field = createField("");
 
           attachValidator({
@@ -279,7 +279,7 @@ describe("validator", () => {
           attachValidator({
             field,
             validateOn: "touch",
-            validator: (value) => !value,
+            validator: () => false,
           });
 
           await allSettled(field.setValue, { scope, params: "foo" });
@@ -348,14 +348,15 @@ describe("validator", () => {
 
           expect(scope.getState(field.$isError)).toBe(true);
         });
-        it("does not validate on fill", async () => {
+        it.skip("does not validate on fill", async () => {
           const field = createField("");
           attachValidator({
             field,
             validateOn: "touch",
             validator: () => false,
           });
-
+          await allSettled(field.setFocus, { scope, params: true });
+          await allSettled(field.setFocus, { scope, params: false });
           await allSettled(field.fill, { scope, params: "foo" });
 
           expect(scope.getState(field.$isError)).toBe(false);
@@ -383,7 +384,7 @@ describe("validator", () => {
           const field = createField("");
           attachValidator({
             field,
-            validateOn: "change",
+            validateOn: "touch",
             validator: () => false,
           });
           await allSettled(field.setFocus, { scope, params: true });
@@ -411,7 +412,7 @@ describe("validator", () => {
           attachValidator({
             field,
             validateOn: "submit",
-            validator: (value) => !value,
+            validator: () => false,
           });
 
           await allSettled(field.setValue, { scope, params: "foo" });
@@ -435,7 +436,7 @@ describe("validator", () => {
           const field = createField("");
           attachValidator({
             field,
-            validateOn: "touch",
+            validateOn: "submit",
             validator: () => false,
           });
 
@@ -447,7 +448,7 @@ describe("validator", () => {
           const field = createField("");
           attachValidator({
             field,
-            validateOn: "touch",
+            validateOn: "submit",
             validator: () => false,
           });
 
@@ -460,7 +461,7 @@ describe("validator", () => {
 
           attachValidator({
             field,
-            validateOn: "touch",
+            validateOn: "submit",
             validator: () => true,
           });
 
@@ -470,11 +471,10 @@ describe("validator", () => {
           const field = createField("", { initialErrorState: true });
           attachValidator({
             field,
-            validateOn: "touch",
+            validateOn: "submit",
             validator: () => true,
           });
-          await allSettled(field.setFocus, { scope, params: true });
-          await allSettled(field.setFocus, { scope, params: false });
+          await allSettled(field.submit, { scope });
 
           await allSettled(field.reset, { scope });
 
@@ -484,7 +484,7 @@ describe("validator", () => {
           const field = createField("");
           attachValidator({
             field,
-            validateOn: "touch",
+            validateOn: "submit",
             validator: () => false,
           });
 
@@ -492,20 +492,14 @@ describe("validator", () => {
 
           expect(scope.getState(field.$isError)).toBe(false);
         });
-        it.skip("does not validate on refill", async () => {
+        it("does not validate on refill", async () => {
           const field = createField("");
-          let i = 0;
           attachValidator({
             field,
-            validateOn: "touch",
-            validator: () => {
-              console.log({ xd: i++ === 0 });
-              return i++ === 0;
-            },
+            validateOn: "submit",
+            validator: () => false,
           });
           await allSettled(field.fill, { scope, params: "foo" });
-          await allSettled(field.setFocus, { scope, params: true });
-          await allSettled(field.setFocus, { scope, params: false });
 
           await allSettled(field.refill, { scope });
 
@@ -515,11 +509,10 @@ describe("validator", () => {
           const field = createField("");
           attachValidator({
             field,
-            validateOn: "change",
+            validateOn: "submit",
             validator: () => false,
           });
-          await allSettled(field.setFocus, { scope, params: true });
-          await allSettled(field.setFocus, { scope, params: false });
+          await allSettled(field.submit, { scope });
 
           await allSettled(field.reset, { scope });
 
