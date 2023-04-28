@@ -279,7 +279,7 @@ describe("validator", () => {
 
           expect(scope.getState(field.$isError)).toBe(false);
         });
-        it.skip("validates on fill", async () => {
+        it("validates on fill", async () => {
           const field = createField("", { initialErrorState: true });
           attachValidator({
             field,
@@ -291,7 +291,7 @@ describe("validator", () => {
 
           expect(scope.getState(field.$isError)).toBe(false);
         });
-        it.skip("validates on refill", async () => {
+        it("validates on refill", async () => {
           const field = createField("", { initialErrorState: true });
           attachValidator({
             field,
@@ -403,7 +403,7 @@ describe("validator", () => {
 
           expect(scope.getState(field.$isError)).toBe(true);
         });
-        it.skip("does not validate on fill", async () => {
+        it("does not validate on fill", async () => {
           const field = createField("");
           attachValidator({
             field,
@@ -415,7 +415,7 @@ describe("validator", () => {
 
           expect(scope.getState(field.$isError)).toBe(false);
         });
-        it.skip("does not validate on refill", async () => {
+        it("does not validate on refill", async () => {
           const field = createField("");
           attachValidator({
             field,
@@ -529,27 +529,28 @@ describe("validator", () => {
 
           expect(scope.getState(field.$isError)).toBe(true);
         });
-        it.skip("does not validate on fill", async () => {
+        it("does not validate on fill", async () => {
           const field = createField("");
+          let i = 0;
           attachValidator({
             field,
             validateOn: "touch",
-            validator: () => false,
+            validator: () => i++ === 0,
           });
           await allSettled(field.setFocus, { scope, params: true });
           await allSettled(field.setFocus, { scope, params: false });
+
           await allSettled(field.fill, { scope, params: "foo" });
 
           expect(scope.getState(field.$isError)).toBe(false);
         });
-        it.skip("does not validate on refill", async () => {
+        it("does not validate on refill", async () => {
           const field = createField("");
           let i = 0;
           attachValidator({
             field,
             validateOn: "touch",
             validator: () => {
-              console.log({ xd: i++ === 0 });
               return i++ === 0;
             },
           });

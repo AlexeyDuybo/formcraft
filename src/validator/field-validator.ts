@@ -105,8 +105,8 @@ export const attachFieldValidator = ({
     });
   }
 
-  const validateValue = sample({
-    clock: [field.setValue, field.fill],
+  const setValue = sample({
+    clock: field.setValue,
     source: { isTouched: field.$isTouched, currentState: $currentState },
     fn: ({ isTouched, currentState }, value) => ({
       value,
@@ -117,20 +117,45 @@ export const attachFieldValidator = ({
   });
 
   split({
-    source: validateValue,
-    match: ({ isTouched }) =>
-      (validationStrategy.change || validationStrategy.touch) &&
-      (validationStrategy.change || isTouched)
+    source: setValue,
+    match: ({ isTouched }) => {
+      if (validationStrategy.change) {
+        return "validate";
+      }
+      return validationStrategy.touch && isTouched
         ? "validate"
-        : "applyCurrent",
+        : "applyCurrent";
+    },
     cases: {
       validate,
       applyCurrent: validated.prepend(
-        ({
+        ({ type, currentState, value }: EventPayload<typeof setValue>) => ({
+          ...currentState,
           type,
-          currentState,
           value,
-        }: EventPayload<typeof validateValue>) => ({
+        })
+      ),
+    } as const,
+  });
+
+  const fill = sample({
+    clock: field.fill,
+    source: { isTouched: field.$isTouched, currentState: $currentState },
+    fn: ({ isTouched, currentState }, value) => ({
+      value,
+      currentState,
+      isTouched,
+      type: validationTypes.setValue,
+    }),
+  });
+
+  split({
+    source: fill,
+    match: () => (validationStrategy.init ? "validate" : "applyCurrent"),
+    cases: {
+      validate,
+      applyCurrent: validated.prepend(
+        ({ type, currentState, value }: EventPayload<typeof fill>) => ({
           ...currentState,
           type,
           value,
