@@ -6,6 +6,9 @@ import {
   fork,
   sample,
   createEffect,
+  createStore,
+  createEvent,
+  createWatch,
 } from "effector";
 import { spyEvent } from "./utils";
 import { createField, attachValidator } from "../src";
@@ -17,6 +20,110 @@ beforeEach(() => {
 
 describe("validator", () => {
   describe("field", () => {
+    describe("external", () => {
+      let $external = createStore("foo");
+      let updateExternal = createEvent<string>();
+      beforeEach(() => {
+        $external = createStore("foo");
+        updateExternal = createEvent();
+        $external.on(updateExternal, (_, newState) => newState);
+      });
+      it("external get into validator fn parameters", async () => {
+        const field = createField("");
+        const validatorFn = vitest.fn(() => true);
+        attachValidator({
+          field,
+          external: $external,
+          validator: validatorFn,
+        });
+
+        await allSettled(field.validate, { scope });
+
+        expect(validatorFn).toHaveBeenCalledWith(expect.anything(), "foo");
+      });
+      it("external does not trigger validation when updateByExternal = false", async () => {
+        const field = createField("");
+        let i = 0;
+        attachValidator({
+          field,
+          external: $external,
+          validator: () => i++ === 0,
+          updateByExternal: false,
+        });
+        await allSettled(field.validate, { scope });
+
+        await allSettled(updateExternal, { scope, params: "bar" });
+
+        expect(scope.getState(field.$isError)).toBe(false);
+      });
+      it("external always triggers validation when updateByExternal = true", async () => {
+        const field = createField("", { initialErrorState: false });
+        attachValidator({
+          field,
+          external: $external,
+          validator: () => false,
+          updateByExternal: true,
+        });
+
+        await allSettled(updateExternal, { scope, params: "bar" });
+
+        expect(scope.getState(field.$isError)).toBe(true);
+      });
+      it('external does not trigger validation before the first validation when updateByExternal = "afterFirstValidation"', async () => {
+        const field = createField("", { initialErrorState: false });
+        attachValidator({
+          field,
+          external: $external,
+          validator: () => false,
+          updateByExternal: "afterFirstValidation",
+        });
+
+        await allSettled(updateExternal, { scope, params: "bar" });
+
+        expect(scope.getState(field.$isError)).toBe(false);
+      });
+      it('external triggers validation after the first validation when updateByExternal = "afterFirstValidation"', async () => {
+        const field = createField("", { initialErrorState: false });
+        attachValidator({
+          field,
+          external: $external,
+          validator: () => false,
+          updateByExternal: "afterFirstValidation",
+        });
+        await allSettled(field.validate, { scope });
+
+        await allSettled(updateExternal, { scope, params: "bar" });
+
+        expect(scope.getState(field.$isError)).toBe(true);
+      });
+      it("external does not trigger validation before the first validation when updateByExternal not specified", async () => {
+        const field = createField("", { initialErrorState: false });
+        attachValidator({
+          field,
+          external: $external,
+          validator: () => false,
+          updateByExternal: "afterFirstValidation",
+        });
+
+        await allSettled(updateExternal, { scope, params: "bar" });
+
+        expect(scope.getState(field.$isError)).toBe(false);
+      });
+      it("external triggers validation after the first validation when updateByExternal not specified", async () => {
+        const field = createField("", { initialErrorState: false });
+        attachValidator({
+          field,
+          external: $external,
+          validator: () => false,
+          updateByExternal: "afterFirstValidation",
+        });
+        await allSettled(field.validate, { scope });
+
+        await allSettled(updateExternal, { scope, params: "bar" });
+
+        expect(scope.getState(field.$isError)).toBe(true);
+      });
+    });
     describe("$isError", () => {
       describe("init", () => {
         it("validates on init", async () => {
