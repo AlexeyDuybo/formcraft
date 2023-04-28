@@ -20,26 +20,95 @@ beforeEach(() => {
 
 describe("validator", () => {
   describe("field", () => {
-    describe("external", () => {
+    describe("validator", () => {
+      describe("params", () => {
+        it("current value ger into params", async () => {
+          const field = createField("foo");
+          const validatorFn = vitest.fn(() => true);
+          attachValidator({
+            field,
+            validator: validatorFn,
+          });
+
+          await allSettled(field.validate, { scope });
+
+          expect(validatorFn).toHaveBeenCalledOnce();
+          expect(validatorFn).toHaveBeenCalledWith("foo");
+        });
+        it("external get into validator fn parameters", async () => {
+          const field = createField("");
+          const validatorFn = vitest.fn(() => true);
+          attachValidator({
+            field,
+            external: createStore("foo"),
+            validator: validatorFn,
+          });
+
+          await allSettled(field.validate, { scope });
+
+          expect(validatorFn).toHaveBeenCalledWith("", "foo");
+        });
+      });
+      describe("result", () => {
+        it("successful validation", async () => {
+          const field = createField("", { initialErrorState: true });
+          attachValidator({
+            field,
+            validator: () => true,
+          });
+
+          await allSettled(field.validate, { scope });
+
+          expect(scope.getState(field.$isError)).toBe(false);
+        });
+        it("failed validation", async () => {
+          const field = createField("");
+          attachValidator({
+            field,
+            validator: () => false,
+          });
+
+          await allSettled(field.validate, { scope });
+
+          expect(scope.getState(field.$isError)).toBe(true);
+          expect(scope.getState(field.$errorMessages)).toEqual([]);
+        });
+        it("failed validation with signle error message", async () => {
+          const field = createField("");
+          attachValidator({
+            field,
+            validator: () => "error",
+          });
+
+          await allSettled(field.validate, { scope });
+
+          expect(scope.getState(field.$isError)).toBe(true);
+          expect(scope.getState(field.$errorMessages)).toEqual(["error"]);
+        });
+        it("failed validation with multiply error messages", async () => {
+          const field = createField("");
+          attachValidator({
+            field,
+            validator: () => ["error1", "error2"],
+          });
+
+          await allSettled(field.validate, { scope });
+
+          expect(scope.getState(field.$isError)).toBe(true);
+          expect(scope.getState(field.$errorMessages)).toEqual([
+            "error1",
+            "error2",
+          ]);
+        });
+      });
+    });
+    describe("updateByExternal ", () => {
       let $external = createStore("foo");
       let updateExternal = createEvent<string>();
       beforeEach(() => {
         $external = createStore("foo");
         updateExternal = createEvent();
         $external.on(updateExternal, (_, newState) => newState);
-      });
-      it("external get into validator fn parameters", async () => {
-        const field = createField("");
-        const validatorFn = vitest.fn(() => true);
-        attachValidator({
-          field,
-          external: $external,
-          validator: validatorFn,
-        });
-
-        await allSettled(field.validate, { scope });
-
-        expect(validatorFn).toHaveBeenCalledWith(expect.anything(), "foo");
       });
       it("external does not trigger validation when updateByExternal = false", async () => {
         const field = createField("");
@@ -124,7 +193,7 @@ describe("validator", () => {
         expect(scope.getState(field.$isError)).toBe(true);
       });
     });
-    describe("$isError", () => {
+    describe("validateOn", () => {
       describe("init", () => {
         it("validates on init", async () => {
           const field = createField("");
