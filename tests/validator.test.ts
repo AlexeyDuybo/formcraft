@@ -8,9 +8,7 @@ import {
   createEffect,
   createStore,
   createEvent,
-  createWatch,
 } from "effector";
-import { spyEvent } from "./utils";
 import { createField, attachValidator } from "../src";
 
 let scope = fork();

@@ -6,9 +6,9 @@ import {
   Store,
   combine,
   createEffect,
+  createWatch,
 } from "effector";
-import { describe, it, expect, beforeEach, vitest } from "vitest";
-import { spyEvent } from "./utils";
+import { describe, it, expect, beforeEach, vitest, vi } from "vitest";
 import { createField } from "../src";
 
 let scope = fork();
@@ -72,8 +72,10 @@ describe("field", () => {
   describe("submit", () => {
     it("resolved", async () => {
       const field = createField("foo");
-      const [resolvedSpy] = spyEvent(field.resolved);
-      const [rejectedSpy] = spyEvent(field.rejected);
+      const resolvedSpy = vitest.fn();
+      const rejectedSpy = vitest.fn();
+      createWatch({ scope, unit: field.resolved, fn: resolvedSpy });
+      createWatch({ scope, unit: field.rejected, fn: rejectedSpy });
 
       await allSettled(field.submit, { scope });
 
@@ -83,8 +85,10 @@ describe("field", () => {
     });
     it("rejected", async () => {
       const field = createField("foo", { initialErrorState: true });
-      const [resolvedSpy] = spyEvent(field.resolved);
-      const [rejectedSpy] = spyEvent(field.rejected);
+      const resolvedSpy = vitest.fn();
+      const rejectedSpy = vitest.fn();
+      createWatch({ scope, unit: field.resolved, fn: resolvedSpy });
+      createWatch({ scope, unit: field.rejected, fn: rejectedSpy });
 
       await allSettled(field.submit, { scope });
 
@@ -336,7 +340,8 @@ describe("field", () => {
   describe("touched", () => {
     it("not called if field is focused", async () => {
       const field = createField("");
-      const [spyTouched] = spyEvent(field.touched);
+      const spyTouched = vitest.fn();
+      createWatch({ scope, fn: spyTouched, unit: field.touched });
 
       await allSettled(field.setFocus, { scope, params: true });
 
@@ -344,7 +349,8 @@ describe("field", () => {
     });
     it("not called if the field has lost focus without getting it", async () => {
       const field = createField("");
-      const [spyTouched] = spyEvent(field.touched);
+      const spyTouched = vitest.fn();
+      createWatch({ scope, fn: spyTouched, unit: field.touched });
 
       await allSettled(field.setFocus, { scope, params: false });
 
@@ -352,7 +358,8 @@ describe("field", () => {
     });
     it("called when field gains focus and then loses it", async () => {
       const field = createField("");
-      const [spyTouched] = spyEvent(field.touched);
+      const spyTouched = vitest.fn();
+      createWatch({ scope, fn: spyTouched, unit: field.touched });
 
       await allSettled(field.setFocus, { scope, params: true });
       await allSettled(field.setFocus, { scope, params: false });
@@ -361,7 +368,8 @@ describe("field", () => {
     });
     it("does not react to focus changes after being called once", async () => {
       const field = createField("");
-      const [spyTouched] = spyEvent(field.touched);
+      const spyTouched = vitest.fn();
+      createWatch({ scope, fn: spyTouched, unit: field.touched });
       await allSettled(field.setFocus, { scope, params: true });
       await allSettled(field.setFocus, { scope, params: false });
 
@@ -376,7 +384,8 @@ describe("field", () => {
     });
     it("calls again after reset", async () => {
       const field = createField("");
-      const [spyTouched] = spyEvent(field.touched);
+      const spyTouched = vitest.fn();
+      createWatch({ scope, fn: spyTouched, unit: field.touched });
 
       await allSettled(field.setFocus, { scope, params: true });
       await allSettled(field.setFocus, { scope, params: false });
@@ -389,7 +398,8 @@ describe("field", () => {
     it("value of the stores is consistent at the time of the call", async () => {
       const field = createField("");
       const fn = createEvent<{ isFocused: boolean; isTouched: boolean }>();
-      const [spyFn] = spyEvent(fn);
+      const spyFn = vitest.fn();
+      createWatch({ fn: spyFn, scope, unit: fn });
       sample({
         clock: field.touched,
         source: { isFocused: field.$isFocused, isTouched: field.$isTouched },
