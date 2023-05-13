@@ -5,6 +5,7 @@ import {
   combine,
   EventPayload,
   createStore,
+  Event,
 } from "effector";
 import { Field } from "../field";
 import { CommonConfig, parseValidatorResult } from "./common";
@@ -20,6 +21,7 @@ const validationTypes = {
   submit: "submit",
   setValue: "setValue",
   setError: "setError",
+  touch: "touch",
 } as const;
 
 export const attachFieldValidator = ({
@@ -37,7 +39,8 @@ export const attachFieldValidator = ({
         })
       : createStore<any>({});
   const validate = createEvent<
-    { type: "setValue"; value: any } | { type: "setError" | "submit" | "reset" }
+    | { type: "setValue"; value: any }
+    | { type: "setError" | "submit" | "reset" | "touch" }
   >();
   const validated = createEvent<{
     type: ValidationTypes;
@@ -95,15 +98,16 @@ export const attachFieldValidator = ({
     target: validate,
   });
 
-  if (validationStrategy.touch) {
-    sample({
-      clock: field.touched,
-      fn: () => ({
-        type: validationTypes.setError,
-      }),
-      target: validate,
-    });
-  }
+  split({
+    source: field._core._touchValidationRequested,
+    match: () => (validationStrategy.touch ? "validate" : "skip"),
+    cases: {
+      validate: validate.prepend(() => ({
+        type: validationTypes.touch,
+      })) as Event<void>,
+      skip: field._core._touchValidationSkipped,
+    },
+  });
 
   const setValue = sample({
     clock: field.setValue,
@@ -219,6 +223,7 @@ export const attachFieldValidator = ({
       setError: field._core._setError,
       submit: field._core._submit,
       reset: field._core._reset,
+      touch: field._core._touchValidationCompleted,
     } as const,
   });
 };

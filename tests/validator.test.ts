@@ -1145,7 +1145,7 @@ describe("validator", () => {
           });
         });
       });
-      describe.skip("setFocus", () => {
+      describe("setFocus", () => {
         it("combine", async () => {
           combine(stores, fn);
           attachValidator({

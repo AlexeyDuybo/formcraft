@@ -31,6 +31,12 @@ export interface Field<Value> extends FieldUnit<Value> {
     _initialValue: Value;
     _initialErrorState: boolean;
     _isValidatorAttached: boolean;
+    _touchValidationRequested: Event<void>;
+    _touchValidationCompleted: Event<{
+      isError: boolean;
+      errorMessages: string[];
+    }>;
+    _touchValidationSkipped: Event<void>;
   };
   kind: "field";
 }
@@ -46,7 +52,6 @@ type SetValueDiff<Value> = {
 };
 type SetFocusedDiff = {
   isFocused: boolean;
-  isTouched: boolean;
 };
 type SubmitDiff<Value> = {
   value: Value;
@@ -90,6 +95,18 @@ export const createField = <Value>(
   }>();
   const _reset = createEvent<ResetDiff>();
   const _resetValidationSkipped = createEvent();
+  const _touchValidationRequested = createEvent();
+  const _touchValidationCompleted = createEvent<{
+    isError: boolean;
+    errorMessages: string[];
+  }>();
+  const _touchValidationSkipped = createEvent();
+  const _fieldTouched = createEvent<{
+    isError: boolean;
+    errorMessages: string[];
+    isTouched: boolean;
+    isFocused: boolean;
+  }>();
 
   const $isDirty = createStore(false);
   const $isError = createStore(initialErrorState);
@@ -121,18 +138,23 @@ export const createField = <Value>(
   $isError
     .on(_setValue, (_, { isError }) => isError)
     .on(_setError, (_, { isError }) => isError)
+    .on(_fieldTouched, (_, { isError }) => isError)
     .on(_reset, (_, { isError }) => isError);
 
   $errorMessages
     .on(_setValue, (_, { errorMessages }) => errorMessages)
     .on(_setError, (_, { errorMessages }) => errorMessages)
+    .on(_fieldTouched, (_, { errorMessages }) => errorMessages)
     .on(_reset, (_, { errorMessages }) => errorMessages);
 
   $value.on(_setValue, (_, { value }) => value).on(_reset, () => initialValue);
 
-  $isFocused.on(_setFocus, (_, { isFocused }) => isFocused).reset(_reset);
+  $isFocused
+    .on(_fieldTouched, (_, { isFocused }) => isFocused)
+    .on(_setFocus, (_, { isFocused }) => isFocused)
+    .reset(_reset);
 
-  $isTouched.on(_setFocus, (_, { isTouched }) => isTouched).reset(_reset);
+  $isTouched.on(_fieldTouched, (_, { isTouched }) => isTouched).reset(_reset);
 
   $isLoading.on(setLoading, (_, isLoading) => isLoading).reset(_reset);
 
@@ -172,14 +194,67 @@ export const createField = <Value>(
     target: fill,
   });
 
-  sample({
+  const focusChanged = sample({
     clock: setFocus,
-    source: { isFocused: $isFocused, isTouched: $isTouched },
-    fn: ({ isFocused, isTouched }, newFocusState): SetFocusedDiff => ({
-      isFocused: newFocusState,
-      isTouched: isTouched || (isFocused && !newFocusState),
+    source: {
+      currentFocusState: $isFocused,
+      currentIsTouchedState: $isTouched,
+      isValidatorAttached: $isValidatorAttached,
+    },
+    fn: (
+      { currentFocusState, currentIsTouchedState, isValidatorAttached },
+      newFocusState
+    ) => {
+      const newIsTouchedState =
+        currentIsTouchedState || (currentFocusState && !newFocusState);
+      return {
+        isValidatorAttached,
+        newIsTouchedState,
+        currentIsTouchedState,
+        isFocused: newFocusState,
+      };
+    },
+  });
+
+  split({
+    source: focusChanged,
+    match: ({
+      newIsTouchedState,
+      currentIsTouchedState,
+      isValidatorAttached,
+    }) => {
+      const isTouchedStateChanged = newIsTouchedState && !currentIsTouchedState;
+      const nextStepValidationEvent = isValidatorAttached
+        ? "_touchValidationRequested"
+        : "_touchValidationSkipped";
+      return isTouchedStateChanged ? nextStepValidationEvent : "_setFocus";
+    },
+    cases: {
+      _touchValidationRequested,
+      _setFocus,
+      _touchValidationSkipped,
+    } as const,
+  });
+
+  sample({
+    clock: _touchValidationCompleted,
+    fn: (validationResult) => ({
+      ...validationResult,
+      isTouched: true,
+      isFocused: false,
     }),
-    target: _setFocus,
+    target: _fieldTouched,
+  });
+
+  sample({
+    clock: _touchValidationSkipped,
+    source: { isError: $isError, errorMessages: $errorMessages },
+    fn: (currentErrorState) => ({
+      ...currentErrorState,
+      isTouched: true,
+      isFocused: false,
+    }),
+    target: _fieldTouched,
   });
 
   sample({
@@ -250,6 +325,9 @@ export const createField = <Value>(
       _initialValue: initialValue,
       _initialErrorState: initialErrorState,
       _isValidatorAttached: false,
+      _touchValidationCompleted,
+      _touchValidationRequested,
+      _touchValidationSkipped,
     },
     kind: "field",
   };
