@@ -2,8 +2,11 @@
   "extends": "./tsconfig.json",
   "include": ["src/**/*"],
   "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "outDir": "dist",
-    "noEmitOnError": true
+    "noEmitOnError": true,
+    "module": "ES2022",
+    "moduleResolution": "bundler"
   }
 }
